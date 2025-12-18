@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>极东文件上传器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #000; color: #fff; font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #333; }
+        h1 { font-size: 2rem; margin-bottom: 10px; }
+        .desc { color: #ccc; margin-bottom: 30px; line-height: 1.6; }
+        .upload-area { 
+            border: 3px dashed #444; 
+            border-radius: 10px; 
+            padding: 40px 20px; 
+            text-align: center; 
+            margin-bottom: 25px;
+            background: rgba(255,255,255,0.05);
+            transition: all 0.3s ease;
+        }
+        .upload-area:hover { border-color: #666; }
+        .upload-area.dragover { 
+            border-color: #4CAF50; 
+            background: rgba(76,175,80,0.1);
+            transform: scale(1.02);
+        }
+        .file-input { display: none; }
+        .upload-btn { 
+            background: #4CAF50; 
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 6px; 
+            cursor: pointer;
+            margin-top: 15px;
+            font-size: 1.1rem;
+        }
+        .upload-btn:disabled { background: #666; cursor: not-allowed; }
+        .upload-btn-select {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            margin-top: 15px;
+        }
+        .progress-section { margin: 20px 0; display: none; }
+        .progress-bar { width: 100%; height: 10px; background: #222; border-radius: 5px; overflow: hidden; }
+        .progress { height: 100%; background: #4CAF50; width: 0%; transition: width 0.3s; }
+        .progress-info { display: flex; justify-content: space-between; margin-top: 10px; color: #888; }
+        .status { margin: 15px 0; text-align: center; padding: 10px; border-radius: 5px; }
+        .status.processing { background: rgba(255,165,0,0.1); color: #FFA500; }
+        .status.success { background: rgba(76,175,80,0.1); color: #4CAF50; }
+        .status.error { background: rgba(244,67,54,0.1); color: #F44336; }
+        .result-section { display: none; margin-top: 30px; }
+        .result-box { 
+            background: #111; 
+            border: 1px solid #333; 
+            border-radius: 8px; 
+            padding: 20px; 
+            margin: 20px 0;
+            position: relative;
+        }
+        .code-text { 
+            color: #4CAF50; 
+            font-family: monospace; 
+            word-break: break-all; 
+            white-space: pre-wrap;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .copy-btn { 
+            position: absolute; 
+            top: 10px; 
+            right: 10px; 
+            background: #2196F3; 
+            color: white; 
+            border: none; 
+            padding: 8px 16px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+        }
+        .copy-btn:hover { background: #1976D2; }
+        .action-btns { display: flex; gap: 15px; margin-top: 20px; }
+        .action-btn { 
+            flex: 1; 
+            padding: 12px; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 1rem;
+        }
+        .new-btn { background: #666; color: white; }
+        .file-info {
+            margin-top: 15px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 6px;
+            padding: 15px;
+        }
+        .file-info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .file-info-label { color: #ccc; }
+        .file-info-value { color: #4CAF50; }
+        footer { 
+            text-align: center; 
+            margin-top: 50px; 
+            padding-top: 20px; 
+            border-top: 1px solid #333; 
+            color: #666; 
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>极东文件上传器</h1>
+            <div class="desc">超大文件随意传！永久免费不要钱！</div>
+        </header>
+        
+        <main>
+            <div class="upload-area" id="uploadArea">
+                <div style="font-size: 3rem; margin-bottom: 15px;">📁</div>
+                <div style="font-size: 1.2rem; margin-bottom: 10px;">拖拽文件到这里或点击选择</div>
+                <div style="color: #888; margin-bottom: 20px;">支持任意格式文件，文件将自动切割成50MB以下的小块并上传</div>
+                <input type="file" id="fileInput" class="file-input" accept="*/*">
+                <button class="upload-btn-select" id="selectBtn">选择文件</button>
+                <div id="fileInfo" class="file-info" style="display: none;">
+                    <div class="file-info-item">
+                        <span class="file-info-label">文件名:</span>
+                        <span class="file-info-value" id="fileNameDisplay"></span>
+                    </div>
+                    <div class="file-info-item">
+                        <span class="file-info-label">文件大小:</span>
+                        <span class="file-info-value" id="fileSizeDisplay"></span>
+                    </div>
+                </div>
+                <button class="upload-btn" id="uploadBtn" disabled>开始上传</button>
+            </div>
+            
+            <div class="progress-section" id="progressSection">
+                <div class="progress-info">
+                    <span id="actionText">正在准备...</span>
+                    <span id="percentText">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress" id="progressBar"></div>
+                </div>
+                <div class="progress-info">
+                    <span id="chunkText">片段: 0/0</span>
+                    <span id="sizeText">大小: 0 MB</span>
+                </div>
+                <div class="status processing" id="statusText">准备开始处理...</div>
+            </div>
+            
+            <div class="result-section" id="resultSection">
+                <h2>上传完成</h2>
+                <div class="result-box">
+                    <div class="code-text" id="codeOutput">正在生成代码...</div>
+                    <button class="copy-btn" id="copyBtn">复制代码</button>
+                </div>
+                <div style="color: #888; margin: 10px 0; font-size: 0.9rem;">
+                    请复制上方代码，然后前往下载页面粘贴下载
+                </div>
+                <div class="action-btns">
+                    <button class="action-btn new-btn" id="newBtn">处理新文件</button>
+                </div>
+            </div>
+        </main>
+        
+        <footer>
+            © 2024 極東スーパパークラウドストレージ - 無断複写・転載を禁じます
+        </footer>
+    </div>
+
+    <script>
+        // DOM元素
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const selectBtn = document.getElementById('selectBtn');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const progressSection = document.getElementById('progressSection');
+        const actionText = document.getElementById('actionText');
+        const percentText = document.getElementById('percentText');
+        const progressBar = document.getElementById('progressBar');
+        const chunkText = document.getElementById('chunkText');
+        const sizeText = document.getElementById('sizeText');
+        const statusText = document.getElementById('statusText');
+        const resultSection = document.getElementById('resultSection');
+        const codeOutput = document.getElementById('codeOutput');
+        const copyBtn = document.getElementById('copyBtn');
+        const newBtn = document.getElementById('newBtn');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        const fileSizeDisplay = document.getElementById('fileSizeDisplay');
+        
+        // 配置
+        const API_URL = 'https://wcsprodh5.qlbig05.xyz/v1/assets/upload-v4';
+        const TOKEN = 'CAoQARjd7UwgBSiY6IPrsTM.jEFfFdUvqpGdwWwLwIYHtugFDL3qWWneCP9S9pW2p1jOLdQOhijg5iOiKSZfAZjxfGu5h17k6uTCzhu8YobEBw';
+        const CHUNK_SIZE = 50 * 1024 * 1024; // 50MB
+        
+        let currentFile = null;
+        let uploadedUrls = [];
+        
+        // 事件监听
+        selectBtn.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('click', (e) => {
+            if (e.target === selectBtn || e.target === uploadBtn) return;
+            fileInput.click();
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+                currentFile = e.target.files[0];
+                
+                // 显示文件信息
+                fileNameDisplay.textContent = currentFile.name;
+                fileSizeDisplay.textContent = formatFileSize(currentFile.size);
+                fileInfo.style.display = 'block';
+                
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = `上传 ${formatFileSize(currentFile.size)} 的文件`;
+            }
+        });
+        
+        uploadBtn.addEventListener('click', () => {
+            if (currentFile) {
+                startUpload();
+            }
+        });
+        
+        copyBtn.addEventListener('click', copyCode);
+        newBtn.addEventListener('click', resetUploader);
+        
+        // 拖拽事件监听
+        uploadArea.addEventListener('dragenter', handleDragEnter);
+        uploadArea.addEventListener('dragover', handleDragOver);
+        uploadArea.addEventListener('dragleave', handleDragLeave);
+        uploadArea.addEventListener('drop', handleDrop);
+        
+        // 防止默认拖拽行为
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, unhighlight, false);
+        });
+        
+        // 拖拽处理函数
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        function highlight(e) {
+            uploadArea.classList.add('dragover');
+        }
+        
+        function unhighlight(e) {
+            uploadArea.classList.remove('dragover');
+        }
+        
+        function handleDragEnter(e) {
+            preventDefaults(e);
+            highlight(e);
+        }
+        
+        function handleDragOver(e) {
+            preventDefaults(e);
+            highlight(e);
+        }
+        
+        function handleDragLeave(e) {
+            preventDefaults(e);
+            if (e.target === uploadArea) {
+                unhighlight(e);
+            }
+        }
+        
+        function handleDrop(e) {
+            preventDefaults(e);
+            unhighlight(e);
+            
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length > 0) {
+                handleFiles(files);
+            }
+        }
+        
+        function handleFiles(files) {
+            if (files.length === 0) return;
+            
+            // 只取第一个文件
+            const file = files[0];
+            
+            currentFile = file;
+            
+            // 显示文件信息
+            fileNameDisplay.textContent = file.name;
+            fileSizeDisplay.textContent = formatFileSize(file.size);
+            fileInfo.style.display = 'block';
+            
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = `上传 ${formatFileSize(file.size)} 的文件`;
+        }
+        
+        // 开始上传处理
+        async function startUpload() {
+            if (!currentFile) return;
+            
+            uploadArea.style.display = 'none';
+            progressSection.style.display = 'block';
+            resultSection.style.display = 'none';
+            
+            uploadedUrls = [];
+            const totalChunks = Math.ceil(currentFile.size / CHUNK_SIZE);
+            
+            try {
+                for (let i = 0; i < totalChunks; i++) {
+                    const start = i * CHUNK_SIZE;
+                    const end = Math.min(start + CHUNK_SIZE, currentFile.size);
+                    const chunk = currentFile.slice(start, end);
+                    
+                    // 更新进度
+                    updateProgress(i, totalChunks, '切割中');
+                    
+                    // 创建文件对象，强制改为.mp4扩展名
+                    const chunkBlob = new Blob([chunk], { type: 'application/octet-stream' });
+                    const chunkFile = new File([chunkBlob], `chunk_${i}.mp4`, { type: 'video/mp4' });
+                    
+                    // 上传分片
+                    const url = await uploadChunk(chunkFile, i + 1, totalChunks);
+                    if (url) {
+                        uploadedUrls.push(url);
+                        updateProgress(i + 1, totalChunks, '上传中');
+                    } else {
+                        throw new Error(`第 ${i + 1} 个分片上传失败`);
+                    }
+                }
+                
+                // 检查所有分片是否都上传成功
+                if (uploadedUrls.length !== totalChunks) {
+                    throw new Error(`只有 ${uploadedUrls.length}/${totalChunks} 个分片上传成功`);
+                }
+                
+                // 检查URL数组中是否有空值
+                const failedIndex = uploadedUrls.findIndex((url, index) => !url);
+                if (failedIndex !== -1) {
+                    throw new Error(`第 ${failedIndex + 1} 个分片上传失败，URL为空`);
+                }
+                
+                // 上传完成，生成代码
+                showSuccess();
+                generateCode();
+                
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+        
+        // 上传单个分片
+        function uploadChunk(chunkFile, chunkNumber, totalChunks) {
+            return new Promise((resolve, reject) => {
+                const formData = new FormData();
+                formData.append('myFile', chunkFile);
+                formData.append('type', '4'); // 视频类型
+                
+                const xhr = new XMLHttpRequest();
+                const traceId = generateTraceId();
+                
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const percent = Math.round((e.loaded / e.total) * 100);
+                        const overallPercent = Math.round(((chunkNumber - 1 + (percent / 100)) / totalChunks) * 100);
+                        progressBar.style.width = `${overallPercent}%`;
+                        percentText.textContent = `${overallPercent}%`;
+                    }
+                });
+                
+                xhr.onload = function() {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        
+                        if (xhr.status === 200 && response.code === 200) {
+                            const fileUrl = parseFileUrl(response.data);
+                            if (fileUrl) {
+                                resolve(fileUrl);
+                            } else {
+                                reject(new Error('无法解析文件URL'));
+                            }
+                        } else if (xhr.status === 202 && response.code === 200) {
+                            // 异步处理
+                            pollUploadResult(response.data, resolve, reject);
+                        } else {
+                            reject(new Error(response.message || '上传失败'));
+                        }
+                    } catch (e) {
+                        reject(new Error('解析响应失败'));
+                    }
+                };
+                
+                xhr.onerror = () => reject(new Error('网络错误'));
+                xhr.ontimeout = () => reject(new Error('请求超时'));
+                
+                xhr.open('POST', API_URL);
+                xhr.setRequestHeader('x-token', TOKEN);
+                xhr.setRequestHeader('x-trace-id', traceId);
+                xhr.setRequestHeader('Accept', '*/*');
+                xhr.timeout = 60000;
+                xhr.send(formData);
+            });
+        }
+        
+        // 解析文件URL
+        function parseFileUrl(data) {
+            const baseUrl = 'https://imagesacc.qlbig05.xyz';
+            
+            if (typeof data === 'string' && data.startsWith('/')) {
+                return baseUrl + data;
+            }
+            
+            if (data && typeof data === 'object') {
+                if (data.uri && data.uri.startsWith('/')) {
+                    return baseUrl + data.uri;
+                }
+                if (data.filepath && data.filepath.startsWith('/')) {
+                    return baseUrl + data.filepath;
+                }
+                if (data.url && data.url.startsWith('/')) {
+                    return baseUrl + data.url;
+                }
+                
+                // 尝试查找任何以/开头的字符串
+                for (const key in data) {
+                    if (typeof data[key] === 'string' && data[key].startsWith('/')) {
+                        return baseUrl + data[key];
+                    }
+                }
+            }
+            
+            return null;
+        }
+        
+        // 轮询上传结果
+        function pollUploadResult(uploadId, resolve, reject) {
+            const eventSource = new EventSource(`${API_URL}?uploadId=${uploadId}`);
+            
+            eventSource.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.percentage === 100 && data.data) {
+                        eventSource.close();
+                        const fileUrl = parseFileUrl(data.data);
+                        if (fileUrl) {
+                            resolve(fileUrl);
+                        } else {
+                            reject(new Error('无法解析轮询结果'));
+                        }
+                    }
+                } catch (e) {
+                    console.error('解析轮询数据失败:', e);
+                }
+            };
+            
+            eventSource.onerror = function() {
+                eventSource.close();
+                reject(new Error('轮询连接失败'));
+            };
+            
+            setTimeout(() => {
+                eventSource.close();
+                reject(new Error('轮询超时'));
+            }, 300000);
+        }
+        
+        // 更新进度
+        function updateProgress(current, total, action) {
+            const percent = Math.round((current / total) * 100);
+            progressBar.style.width = `${percent}%`;
+            percentText.textContent = `${percent}%`;
+            actionText.textContent = action;
+            chunkText.textContent = `片段: ${current}/${total}`;
+            sizeText.textContent = `大小: ${formatFileSize(current * CHUNK_SIZE)}`;
+            statusText.textContent = `${action}: ${current}/${total}`;
+        }
+        
+        // 显示成功
+        function showSuccess() {
+            progressBar.style.width = '100%';
+            percentText.textContent = '100%';
+            actionText.textContent = '完成';
+            statusText.textContent = '所有片段上传成功！';
+            statusText.className = 'status success';
+        }
+        
+        // 显示错误
+        function showError(message) {
+            statusText.textContent = `错误: ${message}`;
+            statusText.className = 'status error';
+            
+            // 添加手动返回按钮
+            if (!document.getElementById('backToUploadBtn')) {
+                const backBtn = document.createElement('button');
+                backBtn.id = 'backToUploadBtn';
+                backBtn.textContent = '返回主页';
+                backBtn.className = 'upload-btn';
+                backBtn.style.marginTop = '20px';
+                backBtn.onclick = () => {
+                    progressSection.style.display = 'none';
+                    uploadArea.style.display = 'block';
+                    backBtn.remove();
+                };
+                statusText.parentNode.appendChild(backBtn);
+            }
+        }
+        
+        // 生成下载代码
+        function generateCode() {
+            if (uploadedUrls.length === 0) return;
+            
+            const data = {
+                n: currentFile.name,        // 缩短字段名
+                t: currentFile.type,
+                s: currentFile.size,
+                u: uploadedUrls,
+                c: uploadedUrls.length,
+                ts: Date.now()
+            };
+            
+            // 使用更高效的压缩编码
+            const jsonStr = JSON.stringify(data);
+            const compressedStr = compressString(jsonStr);
+            
+            codeOutput.textContent = compressedStr;
+            
+            progressSection.style.display = 'none';
+            resultSection.style.display = 'block';
+        }
+        
+        // 复制代码
+        function copyCode() {
+            const code = codeOutput.textContent;
+            if (!code) return;
+            
+            navigator.clipboard.writeText(code).then(() => {
+                copyBtn.textContent = '已复制';
+                copyBtn.style.background = '#4CAF50';
+                setTimeout(() => {
+                    copyBtn.textContent = '复制代码';
+                    copyBtn.style.background = '#2196F3';
+                }, 2000);
+            }).catch(() => {
+                const textarea = document.createElement('textarea');
+                textarea.value = code;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                copyBtn.textContent = '已复制';
+                copyBtn.style.background = '#4CAF50';
+                setTimeout(() => {
+                    copyBtn.textContent = '复制代码';
+                    copyBtn.style.background = '#2196F3';
+                }, 2000);
+            });
+        }
+        
+        // 重置上传器
+        function resetUploader() {
+            currentFile = null;
+            uploadedUrls = [];
+            fileInput.value = '';
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = '开始上传';
+            fileInfo.style.display = 'none';
+            uploadArea.style.display = 'block';
+            progressSection.style.display = 'none';
+            resultSection.style.display = 'none';
+            progressBar.style.width = '0%';
+            percentText.textContent = '0%';
+            statusText.className = 'status processing';
+            
+            // 清理可能存在的返回按钮
+            const backBtn = document.getElementById('backToUploadBtn');
+            if (backBtn) {
+                backBtn.remove();
+            }
+        }
+        
+        // 高效字符串压缩函数
+        function compressString(str) {
+            // 字符替换压缩
+            let compressed = str;
+            
+            // 常见字符串替换映射 - 顺序很重要！
+            const replacements = [
+                {from: 'https://imagesacc.qlbig05.xyz', to: 'A'},
+                {from: '"filename":', to: 'n:'},
+                {from: '"filetype":', to: 't:'},
+                {from: '"filesize":', to: 's:'},
+                {from: '"urls":', to: 'u:'},
+                {from: '"chunkCount":', to: 'c:'},
+                {from: '"timestamp":', to: 'ts:'},
+                {from: '":"', to: ','}, // JSON逗号和冒号
+                {from: '":', to: ':'}, // JSON冒号
+                {from: '"', to: ''}   // 最后移除引号
+            ];
+            
+            replacements.forEach(replacement => {
+                compressed = compressed.split(replacement.from).join(replacement.to);
+            });
+            
+            // 安全的Base64编码
+            return btoaSafe(compressed).replace(/=/g, '');
+        }
+        
+        // 安全的Base64编码函数，支持Unicode字符
+        function btoaSafe(str) {
+            try {
+                return btoa(str);
+            } catch (e) {
+                // 正确处理Unicode字符
+                const utf8Bytes = new TextEncoder().encode(str);
+                let binary = '';
+                for (let i = 0; i < utf8Bytes.length; i++) {
+                    binary += String.fromCharCode(utf8Bytes[i]);
+                }
+                return btoa(binary);
+            }
+        }
+        
+        // 辅助函数
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function generateTraceId() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+        
+        // 初始化
+        function init() {
+            // 移除localStorage相关代码，页面完全独立
+        }
+        
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,1590 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>极东文件下载器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #000; color: #fff; font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #333; }
+        h1 { font-size: 2rem; margin-bottom: 10px; }
+        .desc { color: #ccc; margin-bottom: 30px; line-height: 1.6; }
+        .code-section { 
+            background: #111; 
+            border-radius: 10px; 
+            padding: 25px; 
+            margin-bottom: 25px;
+        }
+        .code-title { 
+            font-size: 1.2rem; 
+            margin-bottom: 15px; 
+            color: #4CAF50;
+        }
+        .code-input { 
+            width: 100%; 
+            height: 120px; 
+            padding: 15px; 
+            background: #222; 
+            border: 1px solid #444; 
+            border-radius: 6px; 
+            color: #4CAF50; 
+            font-family: monospace; 
+            font-size: 0.9rem; 
+            resize: vertical;
+            margin-bottom: 15px;
+        }
+        .code-input:focus { outline: none; border-color: #4CAF50; }
+        .download-settings {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .settings-title {
+            font-size: 1rem;
+            color: #ccc;
+            margin-bottom: 10px;
+        }
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+        .setting-item {
+            margin-bottom: 10px;
+        }
+        .setting-label {
+            display: block;
+            margin-bottom: 5px;
+            color: #ccc;
+            font-size: 0.9rem;
+        }
+        .setting-input {
+            width: 100%;
+            padding: 8px 12px;
+            background: #222;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #fff;
+        }
+        .setting-input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        .setting-hint {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 5px;
+            line-height: 1.3;
+        }
+        .action-btns { display: flex; gap: 15px; margin-bottom: 20px; }
+        .action-btn { 
+            flex: 1; 
+            padding: 12px; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 1rem;
+        }
+        .download-btn { background: #4CAF50; color: white; }
+        .download-btn:disabled { background: #666; cursor: not-allowed; }
+        .clear-btn { background: #f44336; color: white; }
+        .loading-section { display: none; margin: 20px 0; }
+        .loading-status { 
+            padding: 15px; 
+            border-radius: 6px; 
+            margin-bottom: 15px; 
+            text-align: center;
+        }
+        .loading-status.processing { background: rgba(255,165,0,0.1); color: #FFA500; }
+        .loading-status.success { background: rgba(76,175,80,0.1); color: #4CAF50; }
+        .loading-status.error { background: rgba(244,67,54,0.1); color: #F44336; }
+        .loading-bar { width: 100%; height: 8px; background: #222; border-radius: 4px; overflow: hidden; }
+        .loading-progress { height: 100%; background: #4CAF50; width: 0%; transition: width 0.3s; }
+        .loading-info { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-top: 10px; 
+            color: #888;
+            flex-wrap: wrap;
+        }
+        .loading-info-item { margin: 5px 0; }
+        .file-info { 
+            background: rgba(255,255,255,0.05); 
+            border: 1px solid #333; 
+            border-radius: 6px; 
+            padding: 15px; 
+            margin-top: 20px;
+        }
+        .file-info-item { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #333;
+        }
+        .file-info-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .file-info-label { color: #ccc; font-weight: bold; }
+        .file-info-value { color: #4CAF50; font-family: monospace; }
+        .chunk-list { margin-top: 20px; max-height: 300px; overflow-y: auto; }
+        .chunk-item { 
+            background: rgba(255,255,255,0.03); 
+            border: 1px solid #333; 
+            border-radius: 6px; 
+            padding: 12px; 
+            margin-bottom: 10px;
+        }
+        .chunk-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .chunk-name { font-weight: bold; color: #ccc; }
+        .chunk-status { padding: 3px 8px; border-radius: 3px; font-size: 0.8rem; }
+        .chunk-loading { background: rgba(255,165,0,0.2); color: #FFA500; }
+        .chunk-loaded { background: rgba(76,175,80,0.2); color: #4CAF50; }
+        .chunk-error { background: rgba(244,67,54,0.2); color: #F44336; }
+        .chunk-retry { 
+            background: rgba(33,150,243,0.2); 
+            color: #2196F3; 
+            border: none; 
+            padding: 2px 8px; 
+            border-radius: 3px; 
+            cursor: pointer;
+            font-size: 0.8rem;
+            margin-left: 5px;
+        }
+        .chunk-url { 
+            color: #4CAF50; 
+            font-family: monospace; 
+            font-size: 0.8rem; 
+            word-break: break-all;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .chunk-progress {
+            width: 100%;
+            height: 3px;
+            background: #222;
+            border-radius: 1.5px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        .chunk-progress-fill {
+            height: 100%;
+            background: #4CAF50;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .error-section { 
+            display: none; 
+            padding: 20px; 
+            background: rgba(244,67,54,0.1); 
+            border-radius: 8px; 
+            margin: 20px 0;
+            color: #f44336;
+        }
+        .download-section { 
+            display: none; 
+            padding: 20px; 
+            background: rgba(76,175,80,0.1); 
+            border-radius: 8px; 
+            margin: 20px 0;
+            text-align: center;
+        }
+        .download-btn-final { 
+            background: #2196F3; 
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 6px; 
+            cursor: pointer;
+            font-size: 1.1rem;
+            margin-top: 15px;
+        }
+        .retry-all-btn {
+            background: #FF9800;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .back-btn {
+            background: #666;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        footer { 
+            text-align: center; 
+            margin-top: 50px; 
+            padding-top: 20px; 
+            border-top: 1px solid #333; 
+            color: #666; 
+            font-size: 0.8rem;
+        }
+        
+        @media (max-width: 768px) {
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>极东文件下载器</h1>
+            <div class="desc">文件再大也能下！永久免费不花钱！</div>
+        </header>
+        
+        <main>
+            <div class="code-section" id="codeSection">
+                <div class="code-title">粘贴下载代码</div>
+                <textarea class="code-input" id="codeInput" placeholder="在此粘贴代码..."></textarea>
+                
+                <div class="download-settings" id="downloadSettings">
+                    <div class="settings-title">下载设置</div>
+                    <div class="settings-grid">
+                        <div class="setting-item">
+                            <label class="setting-label">同时下载分片数:</label>
+                            <input type="number" id="chunkConcurrency" class="setting-input" value="10" min="1">
+                            <div class="setting-hint">同时下载的分片数量，默认10</div>
+                        </div>
+                        <div class="setting-item">
+                            <label class="setting-label">分片下载线程数:</label>
+                            <input type="number" id="threadPerChunk" class="setting-input" value="6" min="1">
+                            <div class="setting-hint">单个分片的多线程下载数，默认6</div>
+                        </div>
+                        <div class="setting-item">
+                            <label class="setting-label">最大重试次数:</label>
+                            <input type="number" id="maxRetries" class="setting-input" value="10" min="0">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="action-btns">
+                    <button class="action-btn download-btn" id="downloadBtn">开始下载</button>
+                    <button class="action-btn clear-btn" id="clearBtn">清空代码</button>
+                </div>
+            </div>
+            
+            <div class="loading-section" id="loadingSection">
+                <div class="loading-status processing" id="statusText">准备下载文件...</div>
+                <div class="loading-bar">
+                    <div class="loading-progress" id="progressBar"></div>
+                </div>
+                <div class="loading-info">
+                    <span class="loading-info-item" id="progressText">0%</span>
+                    <span class="loading-info-item" id="chunkText">片段: 0/0</span>
+                    <span class="loading-info-item" id="speedText">速度: 0 KB/s</span>
+                    <span class="loading-info-item" id="timeText">用时: 0秒</span>
+                </div>
+                
+                <div class="file-info" id="fileInfo" style="display: none;">
+                    <div class="file-info-item">
+                        <span class="file-info-label">文件名:</span>
+                        <span class="file-info-value" id="fileName"></span>
+                    </div>
+                    <div class="file-info-item">
+                        <span class="file-info-label">文件类型:</span>
+                        <span class="file-info-value" id="fileType"></span>
+                    </div>
+                    <div class="file-info-item">
+                        <span class="file-info-label">文件大小:</span>
+                        <span class="file-info-value" id="fileSize"></span>
+                    </div>
+                    <div class="file-info-item">
+                        <span class="file-info-label">分片数量:</span>
+                        <span class="file-info-value" id="chunkCount"></span>
+                    </div>
+                    <div class="file-info-item" id="domainInfo" style="display: none;">
+                        <span class="file-info-label">可用域名:</span>
+                        <span class="file-info-value" id="availableDomains">检测中...</span>
+                    </div>
+                </div>
+                
+                <div class="chunk-list" id="chunkList"></div>
+                
+        <div style="text-align: center; margin-top: 20px;">
+            <button class="retry-all-btn" id="retryAllBtn" style="display: none;">重试失败的分片</button>
+        </div>
+            </div>
+            
+            <div class="error-section" id="errorSection">
+                <div id="errorText"></div>
+            </div>
+            
+            <div class="download-section" id="downloadSection">
+                <div style="font-size: 1.2rem; margin-bottom: 15px;">文件已准备就绪</div>
+                <div style="color: #ccc; margin-bottom: 15px;">文件已成功下载并合并完成</div>
+                <div class="file-info">
+                    <div class="file-info-item">
+                        <span class="file-info-label">文件名:</span>
+                        <span class="file-info-value" id="finalFileName"></span>
+                    </div>
+                    <div class="file-info-item">
+                        <span class="file-info-label">文件大小:</span>
+                        <span class="file-info-value" id="finalFileSize"></span>
+                    </div>
+                </div>
+                <button class="download-btn-final" id="finalDownloadBtn">下载文件</button>
+                <div style="margin-top: 15px;">
+                    <button class="back-btn" id="backBtn">返回</button>
+                </div>
+            </div>
+        </main>
+        
+        <footer>
+            © 2024 極東スーパパークラウドストレージ - 無断複写・転載を禁じます
+        </footer>
+    </div>
+
+    <script>
+        // DOM元素
+        const codeInput = document.getElementById('codeInput');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const codeSection = document.getElementById('codeSection');
+        const loadingSection = document.getElementById('loadingSection');
+        const statusText = document.getElementById('statusText');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const chunkText = document.getElementById('chunkText');
+        const speedText = document.getElementById('speedText');
+        const timeText = document.getElementById('timeText');
+        const chunkList = document.getElementById('chunkList');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileType = document.getElementById('fileType');
+        const fileSize = document.getElementById('fileSize');
+        const chunkCount = document.getElementById('chunkCount');
+        const errorSection = document.getElementById('errorSection');
+        const errorText = document.getElementById('errorText');
+        const downloadSection = document.getElementById('downloadSection');
+        const finalFileName = document.getElementById('finalFileName');
+        const finalFileSize = document.getElementById('finalFileSize');
+        const finalDownloadBtn = document.getElementById('finalDownloadBtn');
+        const retryAllBtn = document.getElementById('retryAllBtn');
+        const backBtn = document.getElementById('backBtn');
+
+        const chunkConcurrencyInput = document.getElementById('chunkConcurrency');
+        const threadPerChunkInput = document.getElementById('threadPerChunk');
+        const maxRetriesInput = document.getElementById('maxRetries');
+        
+        // 状态变量
+        let fileData = null;
+        let downloadedChunks = [];
+        let downloadStartTime = 0;
+        let totalDownloadedBytes = 0;
+        let downloadSpeedInterval = null;
+        let activeDownloads = 0;
+        let downloadQueue = [];
+        let failedChunks = [];
+        let currentChunkConcurrency = 3;
+        let currentThreadPerChunk = 5;
+        let currentMaxRetries = 10;
+        let isCancelled = false;
+        let chunkProgressMap = new Map();
+        let chunkRangeRequests = new Map();
+        let domainConnectivityResults = null;
+        let domainRotationIndex = 0; // 域名轮询索引
+        
+        // 事件监听
+        console.log('设置事件监听器...');
+        
+        // 移除可能存在的旧监听器
+        downloadBtn.removeEventListener('click', startDownload);
+        clearBtn.removeEventListener('click', clearCodeInput);
+        finalDownloadBtn.removeEventListener('click', downloadFile);
+        retryAllBtn.removeEventListener('click', retryFailedChunks);
+        
+        // 添加新监听器
+        downloadBtn.addEventListener('click', startDownload);
+        clearBtn.addEventListener('click', clearCodeInput);
+        finalDownloadBtn.addEventListener('click', downloadFile);
+        retryAllBtn.addEventListener('click', retryFailedChunks);
+        
+        // 返回按钮单独处理 - 完全禁用以防止意外重置
+        backBtn.addEventListener('click', () => {
+            console.log('=== 返回按钮被点击 ===');
+            // 下载过程中禁止返回，防止意外重置进度
+            if (downloadQueue.length > 0 || activeDownloads > 0) {
+                alert('下载进行中，无法返回。请等待下载完成。');
+                return;
+            }
+            if (confirm('确定要返回吗？当前的下载进度将会丢失。')) {
+                resetDownloader();
+            }
+        });
+        
+        function clearCodeInput() {
+            codeInput.value = '';
+            codeInput.focus();
+        }
+        
+        console.log('事件监听器设置完成');
+
+        
+        // 重置下载器
+        function resetDownloader() {
+            console.log('=== 重置下载器被调用 ===');
+            
+            // 重置所有状态
+            isCancelled = true;
+            stopSpeedMonitor();
+            downloadSection.style.display = 'none';
+            loadingSection.style.display = 'none';
+            errorSection.style.display = 'none';
+            codeSection.style.display = 'block';
+            codeInput.value = '';
+            codeInput.focus();
+            
+            // 清理状态变量
+            fileData = null;
+            downloadedChunks = [];
+            downloadQueue = [];
+            failedChunks = [];
+            activeDownloads = 0;
+            totalDownloadedBytes = 0;
+            chunkProgressMap.clear();
+            chunkRangeRequests.clear();
+            domainConnectivityResults = null;
+            window.domainConnectivityResults = null;
+            domainRotationIndex = 0;
+            
+            // 隐藏域名信息区域
+            const domainInfo = document.getElementById('domainInfo');
+            if (domainInfo) {
+                domainInfo.style.display = 'none';
+            }
+            
+            // 重置按钮状态
+            finalDownloadBtn.textContent = '下载文件';
+            finalDownloadBtn.disabled = false;
+            finalDownloadBtn.style.background = '#2196F3';
+            
+            // 重新启用下载按钮
+            downloadBtn.disabled = false;
+            
+            // 重置进度条和状态显示
+            progressBar.style.width = '0%';
+            progressText.textContent = '0%';
+            chunkText.textContent = '片段: 0/0';
+            speedText.textContent = '速度: 0 KB/s';
+            timeText.textContent = '用时: 0秒';
+            statusText.textContent = '准备下载文件...';
+            statusText.className = 'loading-status processing';
+            
+            // 清空分片列表
+            chunkList.innerHTML = '';
+            
+            // 隐藏重试按钮
+            retryAllBtn.style.display = 'none';
+
+        }
+        
+        // 开始下载
+        function startDownload() {
+            console.log('=== startDownload 被调用 ===');
+            const code = codeInput.value.trim();
+            if (!code) {
+                showError('请粘贴下载代码');
+                return;
+            }
+            
+            // 如果已经在下载中，防止重复调用
+            if (downloadQueue.length > 0 || activeDownloads > 0) {
+                console.log('下载已在进行中，忽略重复调用');
+                return;
+            }
+            
+            // 获取下载设置（在开始下载前）
+            currentChunkConcurrency = parseInt(chunkConcurrencyInput.value) || 10;
+            currentThreadPerChunk = parseInt(threadPerChunkInput.value) || 6;
+            currentMaxRetries = parseInt(maxRetriesInput.value) || 10;
+            
+            console.log(`下载设置: 并发分片=${currentChunkConcurrency}, 线程数=${currentThreadPerChunk}, 重试=${currentMaxRetries}`);
+            
+            // 验证设置
+            if (currentChunkConcurrency < 1) {
+                showError('同时下载分片数必须大于0');
+                return;
+            }
+            
+            if (currentThreadPerChunk < 1) {
+                showError('分片下载线程数必须大于0');
+                return;
+            }
+            
+            if (currentMaxRetries < 0) {
+                showError('最大重试次数不能为负数');
+                return;
+            }
+            
+            if (currentChunkConcurrency > 20) {
+                if (!confirm(`您设置了${currentChunkConcurrency}个同时下载分片数，分片数过大可能导致浏览器卡顿或下载异常，是否继续？`)) {
+                    return;
+                }
+            }
+            
+            if (currentThreadPerChunk > 10) {
+                if (!confirm(`您设置了${currentThreadPerChunk}个分片下载线程数，线程数过大可能导致服务器压力过大，是否继续？`)) {
+                    return;
+                }
+            }
+            
+            try {
+                // 解析代码 - 仅支持新的压缩格式
+                let decodedData;
+                
+                try {
+                    // 解码压缩格式
+                    const jsonStr = decompressString(code);
+                    console.log('解码后的JSON:', jsonStr); // 调试输出
+                    decodedData = JSON.parse(jsonStr);
+                    console.log('解析后的数据:', decodedData); // 调试输出
+                    
+                    // 数据已经是标准格式，无需转换
+                } catch (e) {
+                    console.error('解码失败:', e);
+                    console.error('错误详情:', e.message, e.stack);
+                    showError('代码格式不正确，请使用新版上传器生成的代码');
+                    return;
+                }
+                
+                // 验证数据格式
+                if (!decodedData.urls || !Array.isArray(decodedData.urls) || decodedData.urls.length === 0) {
+                    showError('无效的下载数据：缺少文件分片URL');
+                    return;
+                }
+                
+                if (!decodedData.filename) {
+                    showError('无效的下载数据：缺少文件名');
+                    return;
+                }
+                
+                fileData = decodedData;
+                startDownloadProcess();
+                
+            } catch (error) {
+                console.error('解析代码失败:', error);
+                showError('代码解析失败: ' + error.message);
+            }
+        }
+        
+        // 更新状态文本
+        function updateStatusText(text) {
+            if (statusText) {
+                statusText.textContent = text;
+            }
+        }
+
+        // 更新域名健康状态（实时）
+        function updateDomainHealth(domain, isHealthy) {
+            if (!window.domainConnectivityResults) return;
+            
+            const results = window.domainConnectivityResults;
+            const domainIndex = results.available.indexOf(domain);
+            
+            if (isHealthy && domainIndex === -1) {
+                // 域名恢复，添加到可用列表
+                results.available.push(domain);
+                const failedIndex = results.failed.indexOf(domain);
+                if (failedIndex !== -1) {
+                    results.failed.splice(failedIndex, 1);
+                }
+                results.availableCount = results.available.length;
+                results.failedCount = results.failed.length;
+                
+                console.log(`域名 ${domain} 恢复可用`);
+                updateDomainInfo();
+            } else if (!isHealthy && domainIndex !== -1) {
+                // 域名失效，从可用列表移除
+                results.available.splice(domainIndex, 1);
+                results.failed.push(domain);
+                results.availableCount = results.available.length;
+                results.failedCount = results.failed.length;
+                
+                console.warn(`域名 ${domain} 检测为不可用`);
+                updateDomainInfo();
+            }
+        }
+
+        // 更新域名信息显示
+        function updateDomainInfo() {
+            if (!window.domainConnectivityResults) return;
+            
+            const results = window.domainConnectivityResults;
+            const availableDomainsElement = document.getElementById('availableDomains');
+            if (availableDomainsElement) {
+                availableDomainsElement.textContent = `${results.availableCount}/40 个可用`;
+                
+                if (results.availableCount >= 20) {
+                    availableDomainsElement.style.color = '#4CAF50';
+                } else if (results.availableCount >= 10) {
+                    availableDomainsElement.style.color = '#FFA500';
+                } else {
+                    availableDomainsElement.style.color = '#F44336';
+                }
+            }
+        }
+
+        // 测试所有域名连通性
+        async function testAllDomainsConnectivity() {
+            const allDomains = [];
+            for (let i = 1; i <= 40; i++) {
+                allDomains.push(`qlbig${i.toString().padStart(2, '0')}`);
+            }
+            
+            // 显示域名信息区域
+            const domainInfo = document.getElementById('domainInfo');
+            const availableDomainsElement = document.getElementById('availableDomains');
+            domainInfo.style.display = 'flex';
+            availableDomainsElement.textContent = '检测中...';
+            
+            updateStatusText('正在检测域名连通性 (0/40)...');
+            
+            let completedTests = 0;
+            
+            const connectivityPromises = allDomains.map(async (domain, index) => {
+                try {
+                    const testUrl = `https://imagesacc.${domain}.xyz/favicon.ico`;
+                    const response = await fetch(testUrl, { 
+                        method: 'HEAD', 
+                        mode: 'no-cors',
+                        signal: AbortSignal.timeout(5000)
+                    });
+                    completedTests++;
+                    updateStatusText(`正在检测域名连通性 (${completedTests}/40)...`);
+                    return { domain, available: true };
+                } catch (error) {
+                    // 使用XMLHttpRequest作为备选方案
+                    return new Promise((resolve) => {
+                        const xhr = new XMLHttpRequest();
+                        const testUrl = `https://imagesacc.${domain}.xyz/favicon.ico`;
+                        xhr.timeout = 3000;
+                        
+                        const timeout = setTimeout(() => {
+                            completedTests++;
+                            updateStatusText(`正在检测域名连通性 (${completedTests}/40)...`);
+                            resolve({ domain, available: false });
+                        }, 3000);
+                        
+                        xhr.onreadystatechange = function() {
+                            if (xhr.readyState === 4) {
+                                clearTimeout(timeout);
+                                completedTests++;
+                                updateStatusText(`正在检测域名连通性 (${completedTests}/40)...`);
+                                resolve({ domain, available: xhr.status !== 0 });
+                            }
+                        };
+                        
+                        xhr.onerror = function() {
+                            clearTimeout(timeout);
+                            completedTests++;
+                            updateStatusText(`正在检测域名连通性 (${completedTests}/40)...`);
+                            resolve({ domain, available: false });
+                        };
+                        
+                        try {
+                            xhr.open('HEAD', testUrl);
+                            xhr.send();
+                        } catch (e) {
+                            clearTimeout(timeout);
+                            completedTests++;
+                            updateStatusText(`正在检测域名连通性 (${completedTests}/40)...`);
+                            resolve({ domain, available: false });
+                        }
+                    });
+                }
+            });
+            
+            const results = await Promise.all(connectivityPromises);
+            const availableDomains = results.filter(result => result.available).map(result => result.domain);
+            const failedDomains = results.filter(result => !result.available).map(result => result.domain);
+            
+            // 存储结果到全局变量
+            window.domainConnectivityResults = {
+                all: results,
+                available: availableDomains,
+                failed: failedDomains,
+                totalTested: allDomains.length,
+                availableCount: availableDomains.length,
+                failedCount: failedDomains.length
+            };
+            
+            // 更新界面显示
+            updateDomainInfo();
+            
+            updateStatusText(`域名连通性检测完成: ${availableDomains.length}/40 个域名可用`);
+            
+            // 显示连通性检测结果
+            setTimeout(() => {
+                if (availableDomains.length < 5) {
+                    updateStatusText(`警告: 只有 ${availableDomains.length} 个域名可用，可能影响下载速度`);
+                } else if (availableDomains.length < 10) {
+                    updateStatusText(`提示: ${availableDomains.length} 个域名可用，下载速度可能受限`);
+                } else {
+                    updateStatusText(`优秀: ${availableDomains.length} 个域名可用，下载速度最大化`);
+                }
+            }, 2000);
+            
+            return window.domainConnectivityResults;
+        }
+
+        // 开始下载过程
+        function startDownloadProcess() {
+            isCancelled = false;
+            codeSection.style.display = 'none';
+            loadingSection.style.display = 'block';
+            errorSection.style.display = 'none';
+            downloadSection.style.display = 'none';
+            retryAllBtn.style.display = 'none';
+            
+            // 重置状态
+            downloadedChunks = [];
+            failedChunks = [];
+            downloadQueue = [];
+            activeDownloads = 0;
+            totalDownloadedBytes = 0;
+            downloadStartTime = Date.now();
+            chunkProgressMap.clear();
+            chunkRangeRequests.clear();
+            
+            // 显示文件信息
+            fileInfo.style.display = 'block';
+            fileName.textContent = fileData.filename;
+            fileType.textContent = fileData.filetype || '未知类型';
+            fileSize.textContent = formatFileSize(fileData.filesize || 0);
+            chunkCount.textContent = fileData.chunkCount || fileData.urls.length;
+            
+            // 清空之前的下载列表
+            chunkList.innerHTML = '';
+            
+            // 创建分片状态显示
+            fileData.urls.forEach((url, index) => {
+                const chunkItem = document.createElement('div');
+                chunkItem.className = 'chunk-item';
+                chunkItem.id = `chunk-${index}`;
+                chunkItem.innerHTML = `
+                    <div class="chunk-header">
+                        <div class="chunk-name">分片 ${index + 1}</div>
+                        <div class="chunk-status chunk-loading">等待中...</div>
+                    </div>
+                    <div class="chunk-url">${url.substring(0, 80)}${url.length > 80 ? '...' : ''}</div>
+                    <div class="chunk-progress">
+                        <div class="chunk-progress-fill" id="chunk-progress-${index}"></div>
+                    </div>
+                `;
+                chunkList.appendChild(chunkItem);
+                
+                // 初始化分片进度
+                chunkProgressMap.set(index, 0);
+                
+                // 添加到下载队列
+                downloadQueue.push({
+                    index: index,
+                    url: url,
+                    retries: 0
+                });
+            });
+            
+            // 开始下载速度监控
+            startSpeedMonitor();
+            
+            // 开始多线程下载
+            startMultiThreadDownload();
+        }
+        
+        // 开始多线程下载
+        function startMultiThreadDownload() {
+            const chunkConcurrency = currentChunkConcurrency;
+            
+            for (let i = 0; i < chunkConcurrency && i < downloadQueue.length; i++) {
+                processNextChunk();
+            }
+        }
+        
+        // 处理下一个分片
+        async function processNextChunk() {
+            if (isCancelled) {
+                console.log('下载已取消，停止处理分片');
+                return;
+            }
+            if (downloadQueue.length === 0) {
+                console.log('下载队列为空');
+                return;
+            }
+            if (activeDownloads >= currentChunkConcurrency) {
+                console.log(`活跃下载已达上限: ${activeDownloads}/${currentChunkConcurrency}`);
+                return;
+            }
+            
+            const chunkInfo = downloadQueue.shift();
+            if (!chunkInfo) return;
+            
+            console.log(`开始处理分片 ${chunkInfo.index + 1}`);
+            activeDownloads++;
+            
+            try {
+                await downloadChunkWithRetry(chunkInfo);
+                console.log(`分片 ${chunkInfo.index + 1} 处理完成`);
+            } finally {
+                activeDownloads--;
+                console.log(`分片 ${chunkInfo.index + 1} 处理结束，活跃下载: ${activeDownloads}，队列剩余: ${downloadQueue.length}`);
+                
+                if (activeDownloads === 0 && downloadQueue.length === 0) {
+                    console.log('所有分片处理完成，调用 finishDownload');
+                    // 添加延迟确保所有状态更新完成
+                    setTimeout(() => {
+                        if (!isCancelled) {
+                            finishDownload();
+                        }
+                    }, 1000);
+                } else {
+                    setTimeout(() => processNextChunk(), 0);
+                }
+            }
+        }
+        
+        // 下载分片（带重试）
+        async function downloadChunkWithRetry(chunkInfo) {
+            if (isCancelled) return;
+            
+            const maxRetries = currentMaxRetries;
+            let lastError = null;
+            
+            for (let attempt = 0; attempt <= maxRetries; attempt++) {
+                if (isCancelled) return;
+                
+                try {
+                    updateChunkStatus(chunkInfo.index, '下载中', '0%');
+                    
+                    // 重置分片进度和线程进度
+                    chunkProgressMap.set(chunkInfo.index, 0);
+                    if (!window.threadProgress) {
+                        window.threadProgress = {};
+                    }
+                    if (!window.threadProgress[chunkInfo.index]) {
+                        window.threadProgress[chunkInfo.index] = [];
+                    }
+                    window.threadProgress[chunkInfo.index] = new Array(currentThreadPerChunk).fill(0);
+                    updateChunkProgress(chunkInfo.index, 0);
+                    
+                    const chunkData = await downloadChunkWithThreads(chunkInfo.url, chunkInfo.index);
+                    downloadedChunks[chunkInfo.index] = chunkData;
+                    
+                    // 清理线程进度数据
+                    if (window.threadProgress && window.threadProgress[chunkInfo.index]) {
+                        delete window.threadProgress[chunkInfo.index];
+                    }
+                    
+                    updateChunkStatus(chunkInfo.index, '已下载', '完成');
+                    updateChunkProgress(chunkInfo.index, 100);
+                    
+                    return;
+                } catch (error) {
+                    lastError = error;
+                    
+                    if (attempt < maxRetries && !isCancelled) {
+                        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+                    } else {
+                        if (!isCancelled) {
+                            updateChunkStatus(chunkInfo.index, '下载失败', '失败');
+                            failedChunks.push(chunkInfo);
+                            
+                            const chunkElement = document.getElementById(`chunk-${chunkInfo.index}`);
+                            if (chunkElement) {
+                                const retryBtn = document.createElement('button');
+                                retryBtn.className = 'chunk-retry';
+                                retryBtn.textContent = '重试';
+                                retryBtn.onclick = () => retrySingleChunk(chunkInfo);
+                                chunkElement.querySelector('.chunk-header').appendChild(retryBtn);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            if (lastError && !isCancelled) {
+                console.error(`分片 ${chunkInfo.index + 1} 下载失败:`, lastError);
+            }
+        }
+        
+        // 使用多线程下载单个分片
+        async function downloadChunkWithThreads(url, index) {
+            if (isCancelled) throw new Error('下载被取消');
+            
+            return new Promise(async (resolve, reject) => {
+                try {
+                    // 等待连通性检测完成
+                    if (!window.domainConnectivityResults) {
+                        updateStatusText('正在检测域名连通性...');
+                        await testAllDomainsConnectivity();
+                    }
+                    
+                    let availableDomains = window.domainConnectivityResults.available || [];
+                    if (availableDomains.length === 0) {
+                        throw new Error('没有可用的下载域名');
+                    }
+                    
+                    const fileSize = await getFileSize(url);
+                    if (isCancelled) {
+                        reject(new Error('下载被取消'));
+                        return;
+                    }
+                    
+                    // 突破Chrome单域名6线程限制：使用不同域名
+                    // 始终使用设置的线程数，即使域名数不足也通过重试复用域名
+                    const actualThreadCount = currentThreadPerChunk;
+                    const chunkSize = Math.ceil(fileSize / actualThreadCount);
+                    
+                    const downloadTasks = [];
+                    const threadData = new Array(actualThreadCount);
+                    
+                    // 智能域名分配策略：轮询确保均匀分布
+                    for (let i = 0; i < actualThreadCount; i++) {
+                        const start = i * chunkSize;
+                        const end = Math.min(start + chunkSize - 1, fileSize - 1);
+                        
+                        if (start > end) continue;
+                        
+                        // 使用轮询机制分配域名，确保均匀使用所有可用域名
+                        // 即使域名数少于线程数，也通过轮询复用域名
+                        const domain = availableDomains[domainRotationIndex % availableDomains.length];
+                        domainRotationIndex++; // 全局轮询索引递增
+                        const threadUrl = url.replace(/qlbig\d+/, domain);
+                        
+                        console.log(`分片 ${index + 1} 线程 ${i} 使用域名: ${domain}`);
+                        
+                        downloadTasks.push(
+                            downloadChunkPartWithFallback(threadUrl, index, i, start, end, threadData, i, actualThreadCount, domain, availableDomains)
+                                .catch(error => {
+                                    console.error(`分片 ${index + 1} 线程 ${i} (域名: ${domain}) 下载失败:`, error);
+                                    throw error;
+                                })
+                        );
+                    }
+                    
+                    await Promise.all(downloadTasks);
+                    
+                    if (isCancelled) {
+                        reject(new Error('下载被取消'));
+                        return;
+                    }
+                    
+                    const blobParts = [];
+                    for (let i = 0; i < actualThreadCount; i++) {
+                        if (threadData[i]) {
+                            blobParts.push(threadData[i]);
+                        }
+                    }
+                    
+                    const combinedBlob = new Blob(blobParts);
+                    
+                    totalDownloadedBytes += combinedBlob.size;
+                    updateOverallProgress();
+                    
+                    resolve(combinedBlob);
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        }
+        
+        // 获取文件大小
+        async function getFileSize(url) {
+            return new Promise((resolve, reject) => {
+                if (isCancelled) {
+                    reject(new Error('下载被取消'));
+                    return;
+                }
+                
+                const xhr = new XMLHttpRequest();
+                xhr.open('HEAD', url, true);
+                // xhr.timeout = 0; // 取消超时检测
+                
+                xhr.onload = function() {
+                    if (xhr.status === 200) {
+                        const contentLength = xhr.getResponseHeader('Content-Length');
+                        if (contentLength) {
+                            resolve(parseInt(contentLength));
+                        } else {
+                            reject(new Error('无法获取文件大小'));
+                        }
+                    } else {
+                        reject(new Error(`HTTP ${xhr.status}`));
+                    }
+                };
+                
+                xhr.onerror = function() {
+                    reject(new Error('网络错误'));
+                };
+                
+                // 取消超时检测，允许长时间请求
+                // xhr.ontimeout = function() {
+                //     reject(new Error('请求超时'));
+                // };
+                
+                xhr.onabort = function() {
+                    reject(new Error('请求被取消'));
+                };
+                
+                xhr.send();
+            });
+        }
+        
+        // 下载分片的一部分（带域名回退机制）
+        async function downloadChunkPartWithFallback(url, chunkIndex, threadIndex, start, end, threadData, threadNum, totalThreads, currentDomain, availableDomains) {
+            const maxRetries = 3;
+            let lastError = null;
+            
+            for (let attempt = 0; attempt <= maxRetries; attempt++) {
+                if (isCancelled) {
+                    throw new Error('下载被取消');
+                }
+                
+                try {
+                    await downloadChunkPart(url, chunkIndex, threadIndex, start, end, threadData, threadNum, totalThreads);
+                    return; // 成功，直接返回
+                } catch (error) {
+                    lastError = error;
+                    
+                    // 如果是重试且还有备用域名，尝试切换域名
+                    if (attempt < maxRetries && availableDomains.length > 1) {
+                        // 标记当前域名为可能有问题
+                        console.warn(`域名 ${currentDomain} 在分片 ${chunkIndex + 1} 线程 ${threadIndex} 第${attempt + 1}次尝试失败:`, error.message);
+                        
+                        // 选择一个不同的域名
+                        const alternativeDomains = availableDomains.filter(d => d !== currentDomain);
+                        const newDomain = alternativeDomains[Math.floor(Math.random() * alternativeDomains.length)];
+                        const newUrl = url.replace(/qlbig\d+/, newDomain);
+                        
+                        console.log(`分片 ${chunkIndex + 1} 线程 ${threadIndex} 切换域名: ${currentDomain} -> ${newDomain}`);
+                        
+                        // 更新URL并继续重试
+                        url = newUrl;
+                        currentDomain = newDomain;
+                        
+                        // 短暂延迟后重试
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    } else if (attempt < maxRetries) {
+                        // 简单重试，不切换域名
+                        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+                    }
+                }
+            }
+            
+            // 所有重试都失败了
+            throw lastError || new Error('下载失败');
+        }
+
+        // 下载分片的一部分
+        async function downloadChunkPart(url, chunkIndex, threadIndex, start, end, threadData, threadNum, totalThreads) {
+            return new Promise((resolve, reject) => {
+                if (isCancelled) {
+                    reject(new Error('下载被取消'));
+                    return;
+                }
+                
+                const xhr = new XMLHttpRequest();
+                xhr.open('GET', url, true);
+                xhr.responseType = 'blob';
+                // xhr.timeout = 0; // 取消超时检测，允许长时间下载
+                
+                xhr.setRequestHeader('Range', `bytes=${start}-${end}`);
+                
+                xhr.onload = function() {
+                    if (xhr.status === 200 || xhr.status === 206) {
+                        threadData[threadNum] = xhr.response;
+                        resolve();
+                    } else {
+                        reject(new Error(`HTTP ${xhr.status}`));
+                    }
+                };
+                
+                xhr.onerror = function() {
+                    reject(new Error('网络错误'));
+                };
+                
+                xhr.onabort = function() {
+                    reject(new Error('请求被取消'));
+                };
+                
+                // 取消超时检测，允许长时间下载
+                // xhr.ontimeout = function() {
+                //     reject(new Error('请求超时'));
+                // };
+                
+                xhr.onprogress = function(event) {
+                    if (event.lengthComputable) {
+                        // 当前线程的进度
+                        const threadPercent = (event.loaded / event.total) * 100;
+                        
+                        // 存储当前线程的进度
+                        if (!window.threadProgress) {
+                            window.threadProgress = {};
+                        }
+                        if (!window.threadProgress[chunkIndex]) {
+                            window.threadProgress[chunkIndex] = new Array(totalThreads).fill(0);
+                        }
+                        window.threadProgress[chunkIndex][threadNum] = threadPercent;
+                        
+                        // 计算所有线程的总进度
+                        let totalThreadProgress = 0;
+                        for (let i = 0; i < totalThreads; i++) {
+                            totalThreadProgress += window.threadProgress[chunkIndex][i] || 0;
+                        }
+                        
+                        // 计算分片平均进度
+                        const chunkProgress = totalThreadProgress / totalThreads;
+                        
+                        // 限制在0-100之间并保留1位小数
+                        const roundedProgress = Math.min(100, Math.max(0, chunkProgress));
+                        chunkProgressMap.set(chunkIndex, roundedProgress);
+                        updateChunkProgress(chunkIndex, roundedProgress);
+                        
+                        // 更新状态文本显示百分比
+                        const statusText = `${Math.round(roundedProgress)}%`;
+                        updateChunkStatus(chunkIndex, '下载中', statusText);
+                    }
+                };
+                
+                xhr.send();
+            });
+        }
+        
+        // 更新分片进度
+        function updateChunkProgress(index, progress) {
+            const progressElement = document.getElementById(`chunk-progress-${index}`);
+            if (progressElement) {
+                progressElement.style.width = `${progress}%`;
+            }
+        }
+        
+        // 更新分片状态
+        function updateChunkStatus(index, status, text) {
+            const chunkElement = document.getElementById(`chunk-${index}`);
+            if (chunkElement) {
+                const statusElement = chunkElement.querySelector('.chunk-status');
+                if (statusElement) {
+                    // 始终更新文本，确保百分比显示正确
+                    statusElement.textContent = text;
+                    
+                    statusElement.className = 'chunk-status ';
+                    if (status === '下载中') {
+                        statusElement.className += 'chunk-loading';
+                    } else if (status === '已下载') {
+                        statusElement.className += 'chunk-loaded';
+                    } else if (status === '下载失败') {
+                        statusElement.className += 'chunk-error';
+                    } else {
+                        statusElement.className += 'chunk-pending';
+                    }
+                }
+            }
+        }
+        
+        // 更新整体进度
+        function updateOverallProgress() {
+            if (isCancelled) return;
+            
+            const downloadedCount = downloadedChunks.filter(chunk => chunk !== undefined).length;
+            const totalChunks = fileData.urls.length;
+            
+            // 计算基于字节的进度
+            let totalProgress = 0;
+            for (let i = 0; i < totalChunks; i++) {
+                if (downloadedChunks[i] !== undefined) {
+                    totalProgress += 100; // 已完成的分片
+                } else {
+                    // 正在下载的分片，获取其实时进度
+                    const chunkProgress = chunkProgressMap.get(i) || 0;
+                    totalProgress += chunkProgress;
+                }
+            }
+            
+            const progress = Math.round(totalProgress / totalChunks);
+            
+            progressBar.style.width = `${progress}%`;
+            progressText.textContent = `${progress}%`;
+            chunkText.textContent = `片段: ${downloadedCount}/${totalChunks}`;
+            
+            if (downloadedCount < totalChunks) {
+                const activeCount = downloadedChunks.filter(chunk => chunk === undefined).length;
+                statusText.textContent = `下载中: ${downloadedCount}/${totalChunks} 个分片 (${activeCount} 个进行中)`;
+            }
+        }
+        
+        // 完成下载
+        function finishDownload() {
+            console.log('=== finishDownload 被调用 ===');
+            if (isCancelled) {
+                console.log('下载已取消，退出 finishDownload');
+                return;
+            }
+            
+            stopSpeedMonitor();
+            
+            const downloadedCount = downloadedChunks.filter(chunk => chunk !== undefined).length;
+            const totalChunks = fileData.urls.length;
+            
+            console.log(`下载状态: ${downloadedCount}/${totalChunks}, 失败: ${failedChunks.length}`);
+            
+            if (failedChunks.length > 0) {
+                statusText.textContent = `下载完成 ${downloadedCount}/${totalChunks} 个分片，${failedChunks.length} 个失败`;
+                statusText.className = 'loading-status error';
+                retryAllBtn.style.display = 'inline-block';
+            } else if (downloadedCount === totalChunks) {
+                statusText.textContent = '所有分片下载完成，正在合并文件...';
+                statusText.className = 'loading-status success';
+                
+                setTimeout(() => {
+                    console.log('开始合并文件...');
+                    mergeFile();
+                }, 1000);
+            } else {
+                statusText.textContent = `下载完成 ${downloadedCount}/${totalChunks} 个分片`;
+                statusText.className = 'loading-status error';
+                retryAllBtn.style.display = 'inline-block';
+            }
+        }
+        
+        // 重试失败的分片
+        function retryFailedChunks() {
+            if (failedChunks.length === 0) return;
+            
+            failedChunks.forEach(chunkInfo => {
+                chunkInfo.retries = 0;
+                downloadQueue.push(chunkInfo);
+            });
+            
+            failedChunks = [];
+            retryAllBtn.style.display = 'none';
+            
+            startMultiThreadDownload();
+        }
+        
+        // 重试单个分片
+        function retrySingleChunk(chunkInfo) {
+            const chunkElement = document.getElementById(`chunk-${chunkInfo.index}`);
+            if (chunkElement) {
+                const retryBtn = chunkElement.querySelector('.chunk-retry');
+                if (retryBtn) {
+                    retryBtn.remove();
+                }
+            }
+            
+            const index = failedChunks.findIndex(c => c.index === chunkInfo.index);
+            if (index !== -1) {
+                failedChunks.splice(index, 1);
+            }
+            
+            chunkInfo.retries = 0;
+            downloadQueue.push(chunkInfo);
+            
+            if (activeDownloads === 0) {
+                processNextChunk();
+            }
+        }
+        
+        // 合并文件
+        function mergeFile() {
+            console.log('=== mergeFile 被调用 ===');
+            if (isCancelled) {
+                console.log('下载已取消，退出合并文件');
+                return;
+            }
+            
+            try {
+                console.log('检查分片完整性...');
+                const missingChunks = downloadedChunks.findIndex(chunk => chunk === undefined);
+                if (missingChunks !== -1) {
+                    throw new Error(`第 ${missingChunks + 1} 个分片下载失败，无法合并文件`);
+                }
+                
+                console.log('开始合并文件...');
+                const blobArray = downloadedChunks.map(chunk => {
+                    if (chunk instanceof Blob) {
+                        return chunk;
+                    } else if (chunk instanceof ArrayBuffer) {
+                        return new Blob([chunk]);
+                    } else {
+                        return new Blob([chunk]);
+                    }
+                });
+                
+                const mergedBlob = new Blob(blobArray, { type: fileData.filetype || 'application/octet-stream' });
+                
+                window.mergedFileBlob = mergedBlob;
+                
+                console.log('文件合并完成，显示下载区域');
+                loadingSection.style.display = 'none';
+                downloadSection.style.display = 'block';
+                finalFileName.textContent = fileData.filename;
+                finalFileSize.textContent = formatFileSize(mergedBlob.size);
+                
+            } catch (error) {
+                console.error('合并文件失败:', error);
+                showError('合并文件失败: ' + error.message);
+            }
+        }
+        
+        // 开始速度监控
+        function startSpeedMonitor() {
+            let lastBytes = 0;
+            let lastTime = Date.now();
+            let speedHistory = [];
+            let speedDropDetected = false;
+            
+            downloadSpeedInterval = setInterval(() => {
+                if (isCancelled) {
+                    stopSpeedMonitor();
+                    return;
+                }
+                
+                const currentTime = Date.now();
+                const elapsedTime = (currentTime - lastTime) / 1000;
+                
+                if (elapsedTime > 0) {
+                    const currentBytes = totalDownloadedBytes;
+                    const bytesDiff = currentBytes - lastBytes;
+                    const instantSpeed = bytesDiff / elapsedTime;
+                    
+                    // 记录速度历史，用于计算平均值和检测速度下降
+                    speedHistory.push({ speed: instantSpeed, time: currentTime });
+                    if (speedHistory.length > 30) {
+                        speedHistory.shift(); // 保留最近30秒的速度历史
+                    }
+                    
+                    // 检测速度下降
+                    if (speedHistory.length >= 10 && !speedDropDetected) {
+                        const recentSpeeds = speedHistory.slice(-5).map(h => h.speed);
+                        const earlierSpeeds = speedHistory.slice(-15, -5).map(h => h.speed);
+                        
+                        if (earlierSpeeds.length > 0) {
+                            const recentAvg = recentSpeeds.reduce((sum, s) => sum + s, 0) / recentSpeeds.length;
+                            const earlierAvg = earlierSpeeds.reduce((sum, s) => sum + s, 0) / earlierSpeeds.length;
+                            
+                            // 如果最近速度下降到之前速度的50%以下，触发警告
+                            if (recentAvg < earlierAvg * 0.5 && earlierAvg > 1024 * 100) { // 只在之前速度超过100KB/s时检测
+                                speedDropDetected = true;
+                                console.warn('检测到下载速度显著下降:', {
+                                    earlier: formatSpeed(earlierAvg),
+                                    recent: formatSpeed(recentAvg),
+                                    drop: ((1 - recentAvg / earlierAvg) * 100).toFixed(1) + '%'
+                                });
+                                
+                                // 在控制台输出诊断信息
+                                console.log('=== 下载速度诊断 ===');
+                                console.log('速度历史:', speedHistory);
+                                console.log('活跃下载:', activeDownloads);
+                                console.log('可用域名:', window.domainConnectivityResults?.available?.length || 0);
+                                console.log('当前分片:', downloadedChunks.filter(chunk => chunk !== undefined).length, '/', fileData.urls.length);
+                            }
+                        }
+                    }
+                    
+                    // 计算平均速度，减少波动
+                    const avgSpeed = speedHistory.reduce((sum, h) => sum + h.speed, 0) / speedHistory.length;
+                    
+                    speedText.textContent = `速度: ${formatSpeed(avgSpeed)}`;
+                    
+                    const totalElapsed = (currentTime - downloadStartTime) / 1000;
+                    timeText.textContent = `用时: ${formatTime(totalElapsed)}`;
+                    
+                    // 计算预计剩余时间
+                    if (avgSpeed > 0 && fileData && fileData.filesize) {
+                        const remainingBytes = fileData.filesize - currentBytes;
+                        const remainingTime = remainingBytes / avgSpeed;
+                        
+                        // 添加预计用时显示
+                        const etaElement = document.getElementById('etaText');
+                        if (!etaElement) {
+                            // 创建预计用时元素
+                            const etaSpan = document.createElement('span');
+                            etaSpan.id = 'etaText';
+                            etaSpan.className = 'loading-info-item';
+                            timeText.parentNode.appendChild(etaSpan);
+                        }
+                        
+                        document.getElementById('etaText').textContent = `预计: ${formatTime(remainingTime)}`;
+                    }
+                    
+                    lastBytes = currentBytes;
+                    lastTime = currentTime;
+                }
+            }, 1000);
+        }
+        
+        // 停止速度监控
+        function stopSpeedMonitor() {
+            if (downloadSpeedInterval) {
+                clearInterval(downloadSpeedInterval);
+                downloadSpeedInterval = null;
+            }
+            
+            // 清理预计用时元素
+            const etaElement = document.getElementById('etaText');
+            if (etaElement) {
+                etaElement.remove();
+            }
+        }
+        
+        // 下载文件
+        function downloadFile() {
+            if (!window.mergedFileBlob) {
+                showError('文件未准备好');
+                return;
+            }
+            
+            try {
+                const url = URL.createObjectURL(window.mergedFileBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileData.filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                
+                setTimeout(() => {
+                    URL.revokeObjectURL(url);
+                }, 1000);
+                
+                // 修改按钮状态
+                finalDownloadBtn.textContent = '文件已下载';
+                finalDownloadBtn.disabled = false;
+                finalDownloadBtn.style.background = '#666';
+                
+            } catch (error) {
+                console.error('创建下载链接失败:', error);
+                showError('创建下载链接失败: ' + error.message);
+            }
+        }
+        
+        // 显示错误
+        function showError(message) {
+            console.error('=== 显示错误信息 ===:', message);
+            errorText.textContent = message;
+            errorSection.style.display = 'block';
+            loadingSection.style.display = 'none';
+            codeSection.style.display = 'block';
+            downloadBtn.disabled = false;
+            
+            stopSpeedMonitor();
+            
+            // 不自动重置，保持下载状态以便重试
+            console.log('错误显示完成，未重置下载器状态');
+        }
+        
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // 格式化速度
+        function formatSpeed(bytesPerSecond) {
+            if (bytesPerSecond === 0) return '0 B/s';
+            const k = 1024;
+            const sizes = ['B/s', 'KB/s', 'MB/s', 'GB/s'];
+            const i = Math.floor(Math.log(bytesPerSecond) / Math.log(k));
+            return parseFloat((bytesPerSecond / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // 格式化时间
+        function formatTime(seconds) {
+            if (seconds < 60) {
+                return `${seconds.toFixed(1)}秒`;
+            } else if (seconds < 3600) {
+                const minutes = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                return `${minutes}分${secs.toFixed(0)}秒`;
+            } else {
+                const hours = Math.floor(seconds / 3600);
+                const minutes = Math.floor((seconds % 3600) / 60);
+                return `${hours}时${minutes}分`;
+            }
+        }
+        
+
+
+        // 字符串解压缩函数
+        function decompressString(compressedStr) {
+            try {
+                // 恢复Base64编码的等号
+                const paddingNeeded = (4 - compressedStr.length % 4) % 4;
+                const base64Str = compressedStr + '='.repeat(paddingNeeded);
+                
+                // 安全的Base64解码
+                let decompressed = atobSafe(base64Str);
+                
+                // 解析原始格式: {n,filename,t,type,s:size,u:[urls],c:count,ts:timestamp}
+                const match = decompressed.match(/^\{n,(.+?),t,(.+?),s:(\d+),u:\[(.+?)\],c:(\d+),ts:(\d+)\}$/);
+                if (!match) {
+                    throw new Error('无法解析压缩格式');
+                }
+                
+                const [, filename, filetype, filesize, urlsStr, chunkCount, timestamp] = match;
+                
+                // 处理URL数组
+                const urls = urlsStr.split(',').map(url => {
+                    if (url.startsWith('A/')) {
+                        return 'https://imagesacc.qlbig05.xyz/' + url.substring(2);
+                    }
+                    return url;
+                });
+                
+                // 构建标准JSON
+                const result = {
+                    filename: filename,
+                    filetype: filetype,
+                    filesize: parseInt(filesize),
+                    urls: urls,
+                    chunkCount: parseInt(chunkCount),
+                    timestamp: parseInt(timestamp)
+                };
+                
+                return JSON.stringify(result);
+            } catch (e) {
+                throw new Error('解压缩失败');
+            }
+        }
+        
+        // 安全的Base64解码函数，支持Unicode字符
+        function atobSafe(str) {
+            // 始终使用UTF-8解码来正确处理中文字符
+            const binary = atob(str);
+            const utf8Bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                utf8Bytes[i] = binary.charCodeAt(i);
+            }
+            return new TextDecoder('utf-8').decode(utf8Bytes);
+        }
+        
+        // 初始化
+        function init() {
+            // 移除localStorage相关代码，页面完全独立
+            
+        // 页面离开前确认（移除可能导致问题的逻辑）
+        window.addEventListener('beforeunload', (e) => {
+            // 只在用户主动关闭页面时提醒，不阻止正常下载流程
+            return;
+        });
+            
+            console.log('下载器初始化完成');
+        }
+        
+        init();
+    </script>
+</body>
+</html>
